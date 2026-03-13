@@ -21,7 +21,7 @@ for folder in [txt_out, csv_out]:
 # 2. THE CLEANING ENGINE
 def normalize_arabic(text):
     """
-    Standardizes Arabic characters and removes noise as per MS1 requirements.
+    Standardizes Arabic characters and removes noise.
     Addresses: Orthographic inconsistencies and dialectal variation.
     """
     if not isinstance(text, str) or text == 'nan': 
@@ -90,14 +90,34 @@ for f_name in os.listdir(txt_out):
 tokens = all_text.split()
 total_words = len(tokens)
 vocab_size = len(set(tokens))
+unique_words = sorted(list(set(tokens)))
 
 # Identify Latin tokens for code-switching analysis - 
 latin_tokens = [t for t in tokens if re.search(r'[a-zA-Z]', t)]
 code_switch_pct = (len(latin_tokens) / total_words) * 100
 
 print(f"Total Transcript Words: {total_words}")
-print(f"Unique Vocabulary: {vocab_size}")
+print(f"Vocabulary Size: {vocab_size}")
+print(f"Unique Vocabulary: {len(unique_words)}")
 print(f"Code-Switching (English) Percentage: {code_switch_pct:.2f}%")
+
+# Checklist Requirement: Handles unknown or rare tokens
+special_tokens = ["<PAD>", "<UNK>", "<SOS>", "<EOS>"]
+full_vocab = special_tokens + unique_words
+
+word_to_idx = {word: i for i, word in enumerate(full_vocab)}
+with open("token_index.json", "w", encoding="utf-8") as f:
+    json.dump(word_to_idx, f, ensure_ascii=False, indent=4)
+
+print(f"Token Index created with {len(full_vocab)} tokens (including special tokens).")
+
+# 7. EXAMPLES FOR REPORT (Checklist Requirement 3 & 4)
+print("\n--- BEFORE/AFTER EXAMPLES FOR REPORT ---")
+noise_example = "[00:45] الدحيح بيقول: إنّ القهوة دي مسألة حياة أو موت.. مش كدة؟!!!"
+cleaned_example = normalize_arabic(re.sub(r'(\[\d+:\d+\]|\d+(\.\d+)?:\s*)', '', noise_example))
+
+print(f"RAW NOISE: {noise_example}")
+print(f"CLEANED:   {cleaned_example}")
 
 # Traceability Check: Ensure answers are still spans of transcripts - [cite: 57, 58]
 print("\n--- TRACEABILITY CHECK ---")
@@ -117,3 +137,4 @@ with open("token_index.json", "w", encoding="utf-8") as f:
     json.dump(word_to_idx, f, ensure_ascii=False, indent=4)
 
 print("\n ALL STEPS COMPLETE.")
+
