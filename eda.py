@@ -69,6 +69,18 @@ if match:
 else:
     print("Could not find matching transcript for traceability check. Check filenames.")
 
+# 7. COMPARE QUESTION VS ANSWER VOCABULARY
+q_vocab = set(" ".join(df_qa['question'].astype(str)).split())
+a_vocab = set(" ".join(df_qa['answer'].astype(str)).split())
+
+print("\n--- VOCABULARY DEPTH ---")
+print(f"Unique Words in Questions: {len(q_vocab)}")
+print(f"Unique Words in Answers: {len(a_vocab)}")
+print(f"Words common to both: {len(q_vocab.intersection(a_vocab))}")
+
+dialect_samples = [w for w in tokens if w in ["مش", "اللي", "عشان", "ده"]]
+print(f"Total Dialect Marker Count: {len(dialect_samples)}")
+
 # 6. VISUALIZATIONS
 plt.figure(figsize=(10, 6))
 sns.histplot(df_qa['q_len'], bins=20, kde=True, color='skyblue')
