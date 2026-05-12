@@ -41,8 +41,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import faiss
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 
 # ── optional LLM clients ────────────────────────────────────────────────────
 try:
@@ -52,7 +52,7 @@ except ImportError:
     _GROQ_OK = False
 
 try:
-    import google.generativeai as genai
+    from google import genai as genai_sdk
     _GEMINI_OK = True
 except ImportError:
     _GEMINI_OK = False
@@ -259,8 +259,7 @@ class LLMManager:
             print("[LLM] Groq client initialised.")
 
         if gemini_key and _GEMINI_OK:
-            genai.configure(api_key=gemini_key)
-            self.gemini_client = genai.GenerativeModel("gemini-1.5-flash")
+            self.gemini_client = genai_sdk.Client(api_key=gemini_key)
             print("[LLM] Gemini client initialised.")
 
         if not self.groq_client and not self.gemini_client:
@@ -319,9 +318,10 @@ class LLMManager:
         return resp.choices[0].message.content.strip()
 
     def _gemini(self, prompt: str, max_tokens: int) -> str:
-        resp = self.gemini_client.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        resp = self.gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=genai_sdk.types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
                 temperature=0.3,
             ),
