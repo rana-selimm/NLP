@@ -293,19 +293,40 @@ class LLMManager:
         return f"[Error] All LLMs failed. Last: {last_err}"
 
     def _build_sequence(self, model: str) -> List[Tuple[str, Any]]:
+        """
+        Build the ordered list of (label, callable) to try.
+        Only adds a provider if its client was successfully initialised
+        (i.e. a non-empty key was provided). Never blindly falls back to a
+        provider whose key is missing or known-invalid.
+        """
         seq = []
-        if model.startswith("groq") and self.groq_client:
-            groq_m = "gemma2-9b-it" if "gemma" in model else "llama-3.1-8b-instant"
-            seq.append((f"groq/{groq_m}", lambda p, mt, m=groq_m: self._groq(p, mt, m)))
-            # fallback within groq
-            for fb in self.GROQ_MODELS:
-                if fb != groq_m:
-                    seq.append((f"groq/{fb}", lambda p, mt, m=fb: self._groq(p, mt, m)))
-        if self.gemini_client:
-            seq.append(("gemini/1.5-flash", lambda p, mt: self._gemini(p, mt)))
-        if model == "gemini" and self.groq_client:
-            for fb in self.GROQ_MODELS:
-                seq.append((f"groq/{fb}-fallback", lambda p, mt, m=fb: self._groq(p, mt, m)))
+
+        if model.startswith("groq"):
+            # Primary: requested Groq model(s)
+            if self.groq_client:
+                groq_m = "gemma2-9b-it" if "gemma" in model else "llama-3.1-8b-instant"
+                seq.append((f"groq/{groq_m}", lambda p, mt, m=groq_m: self._groq(p, mt, m)))
+                for fb in self.GROQ_MODELS:
+                    if fb != groq_m:
+                        seq.append((f"groq/{fb}", lambda p, mt, m=fb: self._groq(p, mt, m)))
+            # Fallback to Gemini only if its client is initialised
+            if self.gemini_client:
+                seq.append(("gemini/2.0-flash[fallback]", lambda p, mt: self._gemini(p, mt)))
+
+        elif model == "gemini":
+            # Primary: Gemini
+            if self.gemini_client:
+                seq.append(("gemini/2.0-flash", lambda p, mt: self._gemini(p, mt)))
+            # Fallback to Groq if its client is initialised
+            if self.groq_client:
+                for fb in self.GROQ_MODELS:
+                    seq.append((f"groq/{fb}[fallback]", lambda p, mt, m=fb: self._groq(p, mt, m)))
+
+        if not seq:
+            raise ValueError(
+                "No LLM client is available. "
+                "Please enter a valid GROQ_API_KEY or GEMINI_API_KEY."
+            )
         return seq
 
     def _groq(self, prompt: str, max_tokens: int, model: str = "llama-3.1-8b-instant") -> str:
