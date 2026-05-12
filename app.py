@@ -139,6 +139,15 @@ if "config_key" not in st.session_state: st.session_state.config_key = ""
 
 current_config = f"{groq_key[:6]}{gemini_key[:6]}{llm_name}{memory}{prompt_type}{prompt_lang}"
 
+# ── key guidance in sidebar ──────────────────────────────────────────────────
+with st.sidebar:
+    if llm_name.startswith("groq") and not groq_key:
+        st.warning("⚠️ Groq key missing. Get a free key at console.groq.com")
+    if llm_name == "gemini" and not gemini_key:
+        st.warning("⚠️ Gemini key missing. Get a free key at aistudio.google.com")
+    if not groq_key and not gemini_key:
+        st.error("❌ Enter at least one API key to start chatting.")
+
 # ── load index when button pressed or config changed ─────────────────────────
 if load_btn or (st.session_state.rag is None and (groq_key or gemini_key)):
     if not groq_key and not gemini_key:
@@ -214,16 +223,28 @@ with tab_chat:
             with st.chat_message("assistant"):
                 with st.spinner("Retrieving & generating…"):
                     t0     = time.time()
-                    result = st.session_state.bot.chat(user_input)
+                    try:
+                        result = st.session_state.bot.chat(user_input)
+                    except ValueError as ve:
+                        st.error(f"⚠️ {ve}")
+                        st.stop()
                     elapsed = time.time() - t0
 
-                if result["is_ood"]:
+                response_text = result["response"]
+
+                # Surface LLM errors as a visible warning instead of raw text
+                if response_text.startswith("[Error]"):
+                    st.warning(
+                        "⚠️ **LLM call failed.** Check that your API key is valid and has quota.\n\n"
+                        f"Details: `{response_text}`"
+                    )
+                elif result["is_ood"]:
                     st.markdown(
-                        f'<span class="ood-msg">{result["response"]}</span>',
+                        f'<span class="ood-msg">{response_text}</span>',
                         unsafe_allow_html=True,
                     )
                 else:
-                    st.markdown(result["response"])
+                    st.markdown(response_text)
 
                 # Source details
                 if result.get("sources"):
