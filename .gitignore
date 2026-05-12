@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# RAG index (rebuilt automatically on first run)
+rag_index.pkl
+rag_index.faiss
+
+# Logs & temp
+install_log.txt
+*.log
+
+# Claude Code internal
+.claude/
+
+# Environment
+.env
